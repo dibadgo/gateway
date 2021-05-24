@@ -602,7 +602,7 @@ func executorExtractValue(source map[string]interface{}, resultLock *sync.Mutex,
 }
 
 func executorInsertObject(target map[string]interface{}, resultLock *sync.Mutex, path []string, value interface{}) error {
-	log.Debug("Inserting object\n    Target: ", target, "\n    Path: ", path, "\n    Value: ", value)
+	// log.Debug("Inserting object\n    Target: ", target, "\n    Path: ", path, "\n    Value: ", value)
 	if len(path) > 0 {
 		// a pointer to the objects we are modifying
 		obj, err := executorExtractValue(target, resultLock, path)
