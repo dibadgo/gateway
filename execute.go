@@ -602,7 +602,7 @@ func executorExtractValue(source map[string]interface{}, resultLock *sync.Mutex,
 }
 
 func executorInsertObject(target map[string]interface{}, resultLock *sync.Mutex, path []string, value interface{}) error {
-	// log.Debug("Inserting object\n    Target: ", target, "\n    Path: ", path, "\n    Value: ", value)
+	log.Debug("Inserting object\n    Target: ", target, "\n    Path: ", path, "\n    Value: ", value)
 	if len(path) > 0 {
 		// a pointer to the objects we are modifying
 		obj, err := executorExtractValue(target, resultLock, path)
@@ -619,7 +619,13 @@ func executorInsertObject(target map[string]interface{}, resultLock *sync.Mutex,
 		if newValue, ok := value.(map[string]interface{}); ok {
 			for k, v := range newValue {
 				resultLock.Lock()
-				targetObj[k] = v
+				v1, ok1 := v.(map[string]interface{})
+				v2, ok2 := targetObj[k].(map[string]interface{})
+				if ok1 && ok2 {
+					v2 = mergeMaps(v2, v1)
+				} else {
+					targetObj[k] = v
+				}
 				resultLock.Unlock()
 			}
 		}
@@ -670,7 +676,7 @@ func mergeMaps(left, right map[string]interface{}) map[string]interface{} {
 				continue
 			}
 
-			panic("Unsupported types to merging")
+			left[key] = rightVal
 		} else {
 			left[key] = rightVal
 		}
