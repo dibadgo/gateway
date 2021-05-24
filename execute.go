@@ -602,7 +602,7 @@ func executorExtractValue(source map[string]interface{}, resultLock *sync.Mutex,
 }
 
 func executorInsertObject(target map[string]interface{}, resultLock *sync.Mutex, path []string, value interface{}) error {
-	// log.Debug("Inserting object\n    Target: ", target, "\n    Path: ", path, "\n    Value: ", value)
+	log.Debug("Inserting object\n    Target: ", target, "\n    Path: ", path, "\n    Value: ", value)
 	if len(path) > 0 {
 		// a pointer to the objects we are modifying
 		obj, err := executorExtractValue(target, resultLock, path)
@@ -631,11 +631,94 @@ func executorInsertObject(target map[string]interface{}, resultLock *sync.Mutex,
 
 		for key, value := range targetObj {
 			resultLock.Lock()
-			target[key] = value
+			v1, ok1 := value.(map[string]interface{})
+			v2, ok2 := target[key].(map[string]interface{})
+			if ok1 && ok2 {
+				v2 = mergeMaps(v2, v1)
+			} else {
+				target[key] = value
+			}
 			resultLock.Unlock()
 		}
 	}
 	return nil
+}
+
+type gqlMap = map[string]interface{}
+
+func mergeMaps(left, right gqlMap) gqlMap {
+	log.Debug("Merge maps \n Left: ", left, "\nTo\nRight: ", right)
+	for key, rightVal := range right {
+		if leftVal, present := left[key]; present {
+			log.Debug(fmt.Sprintf("Left type is: t1  %T", leftVal))
+			log.Debug(fmt.Sprintf("Right type is: r1  %T", rightVal))
+
+			// If both values is map[string]interface{} - recurese
+			lv1, ok1 := leftVal.(gqlMap)
+			rv1, ok2 := rightVal.(gqlMap)
+
+			if ok1 && ok2 {
+				left[key] = mergeMaps(lv1, rv1)
+				continue
+			}
+
+			// If both values []interface{}
+			lSlice, ok1 := leftVal.([]interface{})
+			rSlice, ok2 := rightVal.([]interface{})
+
+			if ok1 && ok2 {
+				left[key] = mergeSlices(lSlice, rSlice)
+				continue
+			}
+
+			panic("Not implemented yet")
+		} else {
+			left[key] = rightVal
+		}
+	}
+	return left
+}
+
+// mergeSlices will merge the right slice into the left slice recursively
+func mergeSlices(lSlice, rSlice []interface{}) []interface{} {
+	// walking on right slice
+	log.Debug("Merge slice ", rSlice, " to ", lSlice)
+	for rIdx, rv := range rSlice {
+		log.Debug(fmt.Sprintf("Type of element %d is: %T", rIdx, rv))
+		// Check if rv - right value from right slice is map[string]interface{}
+		if rMap, ok := rv.(gqlMap); ok {
+			if rID, ok := rMap["id"]; ok {
+				log.Debug(fmt.Sprintf("Element %d is map with the Id: %d", rIdx, rID))
+				// try to find out an entity with the same id in the left slice
+				isFoundId := false
+				for _, lv := range lSlice {
+					if lMap, ok := lv.(gqlMap); ok {
+						if lID, ok := lMap["id"]; ok && lID.(string) == rID.(string) {
+							log.Debug("Found map in left slice with the same id: ", lID)
+							lMap = mergeMaps(lMap, rMap)
+							isFoundId = true
+							break
+						}
+					}
+				}
+
+				if !isFoundId {
+					log.Debug("lSlice doesn't have the entity with the same id, so just add it")
+					lSlice = append(lSlice, rv)
+				}
+			} else {
+				// if the map doesn't have the field id we cannot identify the same value,
+				// so just add it to the left slice
+				log.Debug("Map doesn't have id field. Just add it")
+				lSlice = append(lSlice, rv)
+			}
+		} else {
+			log.Debug(fmt.Sprintf("Element %d is not a map, so just add it to left slice", rIdx))
+			lSlice = append(lSlice, rv)
+		}
+	}
+
+	return lSlice
 }
 
 type extractorPointData struct {
