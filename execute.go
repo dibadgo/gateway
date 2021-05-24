@@ -644,18 +644,16 @@ func executorInsertObject(target map[string]interface{}, resultLock *sync.Mutex,
 	return nil
 }
 
-type gqlMap = map[string]interface{}
-
-func mergeMaps(left, right gqlMap) gqlMap {
-	log.Debug("Merge maps \n Left: ", left, "\nTo\nRight: ", right)
+func mergeMaps(left, right map[string]interface{}) map[string]interface{} {
+	log.Debug("Merge maps \n Right: ", left, "\nTo\nLeft: ", right)
 	for key, rightVal := range right {
 		if leftVal, present := left[key]; present {
 			log.Debug(fmt.Sprintf("Left type is: t1  %T", leftVal))
 			log.Debug(fmt.Sprintf("Right type is: r1  %T", rightVal))
 
-			// If both values is map[string]interface{} - recurese
-			lv1, ok1 := leftVal.(gqlMap)
-			rv1, ok2 := rightVal.(gqlMap)
+			// If both values is map[string]interface{} - recursively merge it
+			lv1, ok1 := leftVal.(map[string]interface{})
+			rv1, ok2 := rightVal.(map[string]interface{})
 
 			if ok1 && ok2 {
 				left[key] = mergeMaps(lv1, rv1)
@@ -667,11 +665,12 @@ func mergeMaps(left, right gqlMap) gqlMap {
 			rSlice, ok2 := rightVal.([]interface{})
 
 			if ok1 && ok2 {
-				left[key] = mergeSlices(lSlice, rSlice)
+				lSlice = mergeSlices(lSlice, rSlice)
+				left[key] = lSlice
 				continue
 			}
 
-			panic("Not implemented yet")
+			panic("Unsupported types to merging")
 		} else {
 			left[key] = rightVal
 		}
@@ -681,28 +680,29 @@ func mergeMaps(left, right gqlMap) gqlMap {
 
 // mergeSlices will merge the right slice into the left slice recursively
 func mergeSlices(lSlice, rSlice []interface{}) []interface{} {
-	// walking on right slice
 	log.Debug("Merge slice ", rSlice, " to ", lSlice)
 	for rIdx, rv := range rSlice {
-		log.Debug(fmt.Sprintf("Type of element %d is: %T", rIdx, rv))
-		// Check if rv - right value from right slice is map[string]interface{}
-		if rMap, ok := rv.(gqlMap); ok {
+		log.Debug(fmt.Sprintf("The type of the element %d is: %T", rIdx, rv))
+		// Check if right value from right slice is map[string]interface{}
+		if rMap, ok := rv.(map[string]interface{}); ok {
 			if rID, ok := rMap["id"]; ok {
-				log.Debug(fmt.Sprintf("Element %d is map with the Id: %d", rIdx, rID))
+				log.Debug(fmt.Sprintf("Element %d is a map with the Id: %d", rIdx, rID))
 				// try to find out an entity with the same id in the left slice
-				isFoundId := false
-				for _, lv := range lSlice {
-					if lMap, ok := lv.(gqlMap); ok {
+
+				leftEntityPosition := -1
+				for lIdx, lv := range lSlice {
+					if lMap, ok := lv.(map[string]interface{}); ok {
 						if lID, ok := lMap["id"]; ok && lID.(string) == rID.(string) {
-							log.Debug("Found map in left slice with the same id: ", lID)
-							lMap = mergeMaps(lMap, rMap)
-							isFoundId = true
+							leftEntityPosition = lIdx
 							break
 						}
 					}
 				}
 
-				if !isFoundId {
+				if leftEntityPosition > 0 {
+					log.Debug("Found map in the left slice with the same id: ", leftEntityPosition)
+					lSlice[leftEntityPosition] = mergeMaps(lSlice[leftEntityPosition].(map[string]interface{}), rMap)
+				} else {
 					log.Debug("lSlice doesn't have the entity with the same id, so just add it")
 					lSlice = append(lSlice, rv)
 				}
