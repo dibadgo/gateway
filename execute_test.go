@@ -13,6 +13,7 @@ import (
 
 	"github.com/nautilus/graphql"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/vektah/gqlparser/v2/ast"
 )
 
@@ -2221,7 +2222,7 @@ func TestExecutor_plansWithManyDeepDependencies(t *testing.T) {
 										},
 										Queryer: &graphql.MockSuccessQueryer{map[string]interface{}{
 											"node": map[string]interface{}{
-												"id": "2",
+												"id":      "2",
 												"address": "Cats street",
 											},
 										}}},
@@ -2262,7 +2263,7 @@ func TestExecutor_plansWithManyDeepDependencies(t *testing.T) {
 				"parent": map[string]interface{}{
 					"id": "1",
 					"house": map[string]interface{}{
-						"id": "2",
+						"id":      "2",
 						"address": "Cats street",
 						"cats": []interface{}{
 							map[string]interface{}{"id": "3", "name": "kitty"},
@@ -2272,4 +2273,81 @@ func TestExecutor_plansWithManyDeepDependencies(t *testing.T) {
 			},
 		},
 	}, result)
+}
+
+func TestMergeMaps(t *testing.T) {
+	t.Run("Simple maps", func(t *testing.T) {
+		map1 := map[string]interface{}{
+			"id":      1,
+			"address": "Cats street",
+		}
+		map2 := map[string]interface{}{
+			"id": 1,
+			"cats": []interface{}{
+				map[string]interface{}{
+					"id": 2,
+				},
+			},
+		}
+
+		expected := map[string]interface{}{
+			"id":      1,
+			"address": "Cats street",
+			"cats": []interface{}{
+				map[string]interface{}{
+					"id": 2,
+				},
+			},
+		}
+
+		actual := mergeMaps(map1, map2)
+
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("Maps with slices", func(t *testing.T) {
+		map1 := map[string]interface{}{
+			"id": 1,
+			"cats": []interface{}{
+				map[string]interface{}{
+					"id": 2,
+				},
+			},
+		}
+		map2 := map[string]interface{}{
+			"id": 1,
+			"cats": []interface{}{
+				map[string]interface{}{
+					"id":      2,
+					"address": "12, Hellow Kitty",
+				},
+				map[string]interface{}{
+					"id": 3,
+				},
+				map[string]interface{}{
+					"color": "pink",
+				},
+			},
+		}
+
+		expected := map[string]interface{}{
+			"id": 1,
+			"cats": []interface{}{
+				map[string]interface{}{
+					"id":      2,
+					"address": "12, Hellow Kitty",
+				},
+				map[string]interface{}{
+					"id": 3,
+				},
+				map[string]interface{}{
+					"color": "pink",
+				},
+			},
+		}
+
+		actual := mergeMaps(map1, map2)
+
+		require.Equal(t, expected, actual)
+	})
 }

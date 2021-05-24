@@ -619,7 +619,13 @@ func executorInsertObject(target map[string]interface{}, resultLock *sync.Mutex,
 		if newValue, ok := value.(map[string]interface{}); ok {
 			for k, v := range newValue {
 				resultLock.Lock()
-				targetObj[k] = v
+				v1, ok1 := v.(map[string]interface{})
+				v2, ok2 := targetObj[k].(map[string]interface{})
+				if ok1 && ok2 {
+					v2 = mergeMaps(v2, v1)
+				} else {
+					targetObj[k] = v
+				}
 				resultLock.Unlock()
 			}
 		}
@@ -631,11 +637,94 @@ func executorInsertObject(target map[string]interface{}, resultLock *sync.Mutex,
 
 		for key, value := range targetObj {
 			resultLock.Lock()
-			target[key] = value
+			v1, ok1 := value.(map[string]interface{})
+			v2, ok2 := target[key].(map[string]interface{})
+			if ok1 && ok2 {
+				v2 = mergeMaps(v2, v1)
+			} else {
+				target[key] = value
+			}
 			resultLock.Unlock()
 		}
 	}
 	return nil
+}
+
+func mergeMaps(left, right map[string]interface{}) map[string]interface{} {
+	log.Debug("Merge maps \n Right: ", left, "\nTo\nLeft: ", right)
+	for key, rightVal := range right {
+		if leftVal, present := left[key]; present {
+			log.Debug(fmt.Sprintf("Left type is: t1  %T", leftVal))
+			log.Debug(fmt.Sprintf("Right type is: r1  %T", rightVal))
+
+			// If both values is map[string]interface{} - recursively merge it
+			lv1, ok1 := leftVal.(map[string]interface{})
+			rv1, ok2 := rightVal.(map[string]interface{})
+
+			if ok1 && ok2 {
+				left[key] = mergeMaps(lv1, rv1)
+				continue
+			}
+
+			// If both values []interface{}
+			lSlice, ok1 := leftVal.([]interface{})
+			rSlice, ok2 := rightVal.([]interface{})
+
+			if ok1 && ok2 {
+				lSlice = mergeSlices(lSlice, rSlice)
+				left[key] = lSlice
+				continue
+			}
+
+			left[key] = rightVal
+		} else {
+			left[key] = rightVal
+		}
+	}
+	return left
+}
+
+// mergeSlices will merge the right slice into the left slice recursively
+func mergeSlices(lSlice, rSlice []interface{}) []interface{} {
+	log.Debug("Merge slice ", rSlice, " to ", lSlice)
+	for rIdx, rv := range rSlice {
+		log.Debug(fmt.Sprintf("The type of the element %d is: %T", rIdx, rv))
+		// Check if right value from right slice is map[string]interface{}
+		if rMap, ok := rv.(map[string]interface{}); ok {
+			if rID, ok := rMap["id"]; ok {
+				log.Debug(fmt.Sprintf("Element %d is a map with the Id: %d", rIdx, rID))
+				// try to find out an entity with the same id in the left slice
+
+				leftEntityPosition := -1
+				for lIdx, lv := range lSlice {
+					if lMap, ok := lv.(map[string]interface{}); ok {
+						if lID, ok := lMap["id"]; ok && lID == rID {
+							leftEntityPosition = lIdx
+							break
+						}
+					}
+				}
+
+				if leftEntityPosition >= 0 {
+					log.Debug("Found map in the left slice with the same id: ", leftEntityPosition)
+					lSlice[leftEntityPosition] = mergeMaps(lSlice[leftEntityPosition].(map[string]interface{}), rMap)
+				} else {
+					log.Debug("lSlice doesn't have the entity with the same id, so just add it")
+					lSlice = append(lSlice, rv)
+				}
+			} else {
+				// if the map doesn't have the field id we cannot identify the same value,
+				// so just add it to the left slice
+				log.Debug("Map doesn't have id field. Just add it")
+				lSlice = append(lSlice, rv)
+			}
+		} else {
+			log.Debug(fmt.Sprintf("Element %d is not a map, so just add it to left slice", rIdx))
+			lSlice = append(lSlice, rv)
+		}
+	}
+
+	return lSlice
 }
 
 type extractorPointData struct {
