@@ -2350,47 +2350,4 @@ func TestMergeMaps(t *testing.T) {
 
 		require.Equal(t, expected, actual)
 	})
-
-	t.Run("Map with slices without id", func(t *testing.T) {
-		map1 := map[string]interface{}{
-			"id": 1,
-			"cats": []interface{}{
-				map[string]interface{}{
-					"id": 2,
-				},
-			},
-		}
-		map2 := map[string]interface{}{
-			"id": 1,
-			"cats": []interface{}{
-				map[string]interface{}{
-					"id":      2,
-					"address": "12, Hellow Kitty",
-				},
-				map[string]interface{}{
-					"id":      3,
-					"address": "12, Hellow Kitty",
-				},
-			},
-		}
-
-		expected := map[string]interface{}{
-			"id": 1,
-			"cats": []interface{}{
-				map[string]interface{}{
-					"id":      2,
-					"address": "12, Hellow Kitty",
-				},
-				map[string]interface{}{
-					"id":      3,
-					"address": "12, Hellow Kitty",
-				},
-			},
-		}
-
-		actual := mergeMaps(map1, map2)
-
-		require.Equal(t, expected, actual)
-	})
-
 }
