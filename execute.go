@@ -698,14 +698,14 @@ func mergeSlices(lSlice, rSlice []interface{}) []interface{} {
 				leftEntityPosition := -1
 				for lIdx, lv := range lSlice {
 					if lMap, ok := lv.(map[string]interface{}); ok {
-						if lID, ok := lMap["id"]; ok && lID.(string) == rID.(string) {
+						if lID, ok := lMap["id"]; ok && lID == rID {
 							leftEntityPosition = lIdx
 							break
 						}
 					}
 				}
 
-				if leftEntityPosition > 0 {
+				if leftEntityPosition >= 0 {
 					log.Debug("Found map in the left slice with the same id: ", leftEntityPosition)
 					lSlice[leftEntityPosition] = mergeMaps(lSlice[leftEntityPosition].(map[string]interface{}), rMap)
 				} else {
