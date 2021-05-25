@@ -897,6 +897,10 @@ func (p *Planner) GetQueryer(ctx *PlanningContext, url string) graphql.Queryer {
 		return ctx.Gateway
 	}
 
+	if val, ok := p.queryerCache[url]; ok {
+		return val
+	}
+
 	// if there is a queryer factory defined
 	if p.QueryerFactory != nil {
 		// use the factory
