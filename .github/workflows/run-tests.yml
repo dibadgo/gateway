@@ -29,8 +29,3 @@ jobs:
         run: |
           export PATH=${PATH}:`go env GOPATH`/bin
           run tests:coverage
-
-      - name: Report to Coveralls
-        uses: shogo82148/actions-goveralls@v1
-        with:
-          path-to-profile: coverage.out
