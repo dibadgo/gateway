@@ -709,8 +709,12 @@ func mergeSlices(lSlice, rSlice []interface{}) []interface{} {
 					log.Debug("Found map in the left slice with the same id: ", leftEntityPosition)
 					lSlice[leftEntityPosition] = mergeMaps(lSlice[leftEntityPosition].(map[string]interface{}), rMap)
 				} else {
-					log.Debug("lSlice doesn't have the entity with the same id, so just add it")
-					lSlice = append(lSlice, rv)
+					if rIdx < len(lSlice) {
+						lSlice[rIdx] = mergeMaps(lSlice[rIdx].(map[string]interface{}), rMap)
+					} else {
+						log.Debug("lSlice doesn't have the entity with the same id, so just add it")
+						lSlice = append(lSlice, rv)
+					}
 				}
 			} else {
 				// if the map doesn't have the field id we cannot identify the same value,
