@@ -897,7 +897,9 @@ func (p *Planner) GetQueryer(ctx *PlanningContext, url string) graphql.Queryer {
 		return ctx.Gateway
 	}
 
-	if val, ok := p.queryerCache[url]; ok {
+	if p.queryerCache == nil {
+		p.queryerCache = map[string]graphql.Queryer{}
+	} else if val, ok := p.queryerCache[url]; ok {
 		return val
 	}
 
