@@ -901,14 +901,17 @@ func (p *Planner) GetQueryer(ctx *PlanningContext, url string) graphql.Queryer {
 		return val
 	}
 
+	var queryer graphql.Queryer
 	// if there is a queryer factory defined
 	if p.QueryerFactory != nil {
 		// use the factory
-		return (*p.QueryerFactory)(ctx, url)
+		queryer = (*p.QueryerFactory)(ctx, url)
+	} else {
+		queryer = graphql.NewSingleRequestQueryer(url)
 	}
-
+	p.queryerCache[url] = queryer
 	// return the queryer for the url
-	return graphql.NewSingleRequestQueryer(url)
+	return queryer
 }
 
 func plannerBuildQuery(operationName, parentType string, variables ast.VariableDefinitionList, selectionSet ast.SelectionSet, fragmentDefinitions ast.FragmentDefinitionList) *ast.QueryDocument {
