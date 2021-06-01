@@ -3,6 +3,7 @@ package gateway
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/vektah/gqlparser/v2"
@@ -895,6 +896,10 @@ func (p *Planner) GetQueryer(ctx *PlanningContext, url string) graphql.Queryer {
 	// if we are looking to query the local schema
 	if url == internalSchemaLocation {
 		return ctx.Gateway
+	}
+
+	if ctx != nil && strings.Contains(strings.SplitN(ctx.Query, " ", 2)[0], "mutation") {
+		return graphql.NewSingleRequestQueryer(url)
 	}
 
 	if p.queryerCache == nil {
