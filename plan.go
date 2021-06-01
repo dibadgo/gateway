@@ -898,7 +898,7 @@ func (p *Planner) GetQueryer(ctx *PlanningContext, url string) graphql.Queryer {
 		return ctx.Gateway
 	}
 
-	if strings.Contains(strings.ToLower(ctx.Query), "mutation") || strings.Contains(strings.ToLower(ctx.Query), "subscription") {
+	if ctx != nil && strings.Contains(strings.SplitN(ctx.Query, " ", 2)[0], "mutation") {
 		return graphql.NewSingleRequestQueryer(url)
 	}
 
